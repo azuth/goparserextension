@@ -45,26 +45,29 @@ func main() {
 		fmt.Println("received", msg2)
 	}
 
-Loop:
+Loop1:
 	for {
 		select {
 		case msg1 := <-cb0:
 			fmt.Println("received", msg1)
-			break Loop
+			break Loop1
 		default:
 			select {
 			case msg2 := <-cb1:
 				fmt.Println("received", msg2)
-				break Loop
+				break Loop1
 			default:
 			}
 		}
 	}
 
+Loop2:
 	selectp {
 	case msg1 := <-cc0:
 		fmt.Println("received", msg1)
+		break Loop2
 	case msg2 := <-cc1:
 		fmt.Println("received", msg2)
+		break Loop2
 	}
 }

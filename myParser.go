@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	//"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -16,21 +16,43 @@ func check(e error) {
 	}
 }
 
-func transformToNativSlectPStmt(selectPStmt *ast.SelectPStmt) *ast.SelectStmt {
-	selectSt := &ast.SelectStmt{Body: selectPStmt.Body}
-	return selectSt
-	/*if st, ok := selectSt.(ast.Stmt); ok {
-		fmt.Println("ok")
-		return st
+func buildNestedSlects(list []ast.Stmt) []ast.Stmt {
+	if len(list) > 0 {
+		if commCl, ok := list[0].(*ast.CommClause); ok {
+			stList := make([]ast.Stmt, 2)
+			stList[0] = commCl
+			stList[1] = &ast.CommClause{}
+			if len(list) > 1 {
+				stList[1].(*ast.CommClause).Body = buildNestedSlects(list[1:])
+			}
+			blockSt := &ast.BlockStmt{List: stList}
+			selectSt := &ast.SelectStmt{Body: blockSt}
+			newlist := make([]ast.Stmt, 1)
+			newlist[0] = selectSt
+			return newlist
+		}
 	}
-	panic("convert fail")*/
+	return make([]ast.Stmt, 0)
+}
+
+func transformToNativSlectPStmt(selectPStmt *ast.SelectPStmt) *ast.ForStmt {
+	blockSt := &ast.BlockStmt{}
+	blockSt.List = buildNestedSlects(selectPStmt.Body.List)
+	forSt := &ast.ForStmt{Body: blockSt}
+
+	return forSt
 }
 
 // Might be incomplete
 func walkThroughStmnt(list []ast.Stmt) {
 	for i, stmt := range list {
 
-		if blk, ok := stmt.(*ast.BlockStmt); ok {
+		if labeled, ok := stmt.(*ast.LabeledStmt); ok {
+			if selectPSt, ok := labeled.Stmt.(*ast.SelectPStmt); ok {
+				walkThroughStmnt(selectPSt.Body.List)
+				list[i].(*ast.LabeledStmt).Stmt = transformToNativSlectPStmt(selectPSt)
+			}
+		} else if blk, ok := stmt.(*ast.BlockStmt); ok {
 			walkThroughStmnt(blk.List)
 		} else if ifst, ok := stmt.(*ast.IfStmt); ok {
 			walkThroughStmnt(ifst.Body.List)
@@ -52,14 +74,17 @@ func walkThroughStmnt(list []ast.Stmt) {
 		} else if rangeSt, ok := stmt.(*ast.RangeStmt); ok {
 			walkThroughStmnt(rangeSt.Body.List)
 		}
+
 	}
 }
 
 // Might be incomplete
 func changeAst(list []ast.Decl) []ast.Decl {
-	for i, decl := range list {
-		if gen, ok := decl.(*ast.GenDecl); ok {
-		} else if fun, ok := decl.(*ast.FuncDecl); ok {
+	for _, decl := range list {
+		//if gen, ok := decl.(*ast.GenDecl); ok {
+		//} else
+
+		if fun, ok := decl.(*ast.FuncDecl); ok {
 			walkThroughStmnt(fun.Body.List)
 		}
 	}
@@ -78,7 +103,7 @@ func main() {
 
 	f.Decls = changeAst(f.Decls)
 
-	//ast.Print(fset, p)
+	//ast.Print(fset, f)
 
 	// pretty-print the AST
 	var buf bytes.Buffer
