@@ -43,53 +43,17 @@ func transformToNativSlectPStmt(selectPStmt *ast.SelectPStmt) *ast.ForStmt {
 	return forSt
 }
 
-// Might be incomplete
-func walkThroughStmnt(list []ast.Stmt) {
-	for i, stmt := range list {
-
-		if labeled, ok := stmt.(*ast.LabeledStmt); ok {
-			if selectPSt, ok := labeled.Stmt.(*ast.SelectPStmt); ok {
-				walkThroughStmnt(selectPSt.Body.List)
-				list[i].(*ast.LabeledStmt).Stmt = transformToNativSlectPStmt(selectPSt)
-			}
-		} else if blk, ok := stmt.(*ast.BlockStmt); ok {
-			walkThroughStmnt(blk.List)
-		} else if ifst, ok := stmt.(*ast.IfStmt); ok {
-			walkThroughStmnt(ifst.Body.List)
-		} else if caseCl, ok := stmt.(*ast.CaseClause); ok {
-			walkThroughStmnt(caseCl.Body)
-		} else if switchSt, ok := stmt.(*ast.SwitchStmt); ok {
-			walkThroughStmnt(switchSt.Body.List)
-		} else if typeSwitchSt, ok := stmt.(*ast.TypeSwitchStmt); ok {
-			walkThroughStmnt(typeSwitchSt.Body.List)
-		} else if commClause, ok := stmt.(*ast.CommClause); ok {
-			walkThroughStmnt(commClause.Body)
-		} else if selectSt, ok := stmt.(*ast.SelectStmt); ok {
-			walkThroughStmnt(selectSt.Body.List)
-		} else if selectPSt, ok := stmt.(*ast.SelectPStmt); ok {
-			walkThroughStmnt(selectPSt.Body.List)
-			list[i] = transformToNativSlectPStmt(selectPSt)
-		} else if forSt, ok := stmt.(*ast.ForStmt); ok {
-			walkThroughStmnt(forSt.Body.List)
-		} else if rangeSt, ok := stmt.(*ast.RangeStmt); ok {
-			walkThroughStmnt(rangeSt.Body.List)
-		}
+func ReplaceInspector(n ast.Node) bool {
+	switch x := n.(type) {
+	case *ast.SelectPStmt:
+		stList := make([]ast.Stmt, 1)
+		block := &ast.BlockStmt{}
+		block.List = stList
+		block.List[0] = transformToNativSlectPStmt(x)
+		x.Body = block
 
 	}
-}
-
-// Might be incomplete
-func changeAst(list []ast.Decl) []ast.Decl {
-	for _, decl := range list {
-		//if gen, ok := decl.(*ast.GenDecl); ok {
-		//} else
-
-		if fun, ok := decl.(*ast.FuncDecl); ok {
-			walkThroughStmnt(fun.Body.List)
-		}
-	}
-
-	return list
+	return true
 }
 
 func main() {
@@ -101,9 +65,7 @@ func main() {
 
 	//ast.Print(fset, f) // print Ast
 
-	f.Decls = changeAst(f.Decls)
-
-	//ast.Print(fset, f)
+	ast.Inspect(f, ReplaceInspector)
 
 	// pretty-print the AST
 	var buf bytes.Buffer
