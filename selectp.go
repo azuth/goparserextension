@@ -69,5 +69,7 @@ Loop2:
 	case msg2 := <-cc1:
 		fmt.Println("received", msg2)
 		break Loop2
+	default:
+		fmt.Println("default")
 	}
 }

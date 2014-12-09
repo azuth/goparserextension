@@ -22,11 +22,17 @@ func buildNestedSlects(list []ast.Stmt) []ast.Stmt {
 			stList := make([]ast.Stmt, 2)
 			stList[0] = commCl
 			stList[1] = &ast.CommClause{}
-			if len(list) > 1 {
-				stList[1].(*ast.CommClause).Body = buildNestedSlects(list[1:])
+			if len(list) >= 2 {
+				if len(list) == 2 && list[1].(*ast.CommClause).Comm == nil {
+					stList[1].(*ast.CommClause).Body = list[1].(*ast.CommClause).Body
+				} else {
+					stList[1].(*ast.CommClause).Body = buildNestedSlects(list[1:])
+				}
 			}
+
 			blockSt := &ast.BlockStmt{List: stList}
 			selectSt := &ast.SelectStmt{Body: blockSt}
+
 			newlist := make([]ast.Stmt, 1)
 			newlist[0] = selectSt
 			return newlist
