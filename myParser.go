@@ -16,11 +16,13 @@ func check(e error) {
 }
 
 func main() {
+
+	// Parse the file "./selectp.go" with selectpstmts
 	fset := token.NewFileSet()
-	// Parse the file
 	f, err := parser.ParseFile(fset, "./selectp.go", nil, parser.AllErrors)
 	check(err)
 
+	// find selectpStmt and transform them to nativ golang code
 	selectpExtension.Transform(f)
 
 	// pretty-print the AST
@@ -28,8 +30,7 @@ func main() {
 	err = printer.Fprint(&buf, fset, f)
 	check(err)
 
-	//ast.Print(fset, f)
-
+	// save pretty-printed Ast to file "./parsedfile.go"
 	err = ioutil.WriteFile("./parsedfile.go", []byte(buf.String()), 0644)
 	check(err)
 }
